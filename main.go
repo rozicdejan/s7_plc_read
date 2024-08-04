@@ -2,86 +2,47 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"s7_plc_read/utils" // Replace with the actual module path
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/robinson/gos7"
 )
 
 type PLCData struct {
-	Tag1 byte
-	Tag2 byte
-	Tag3 byte
-	Tag4 int32
-}
-
-// Exported constants
-const (
-	PlcIP          = "192.168.33.100"
-	InfluxDBURL    = "http://192.168.107.100:8086"
-	InfluxDBHealth = "http://192.168.107.100:8086/health"
-	InfluxDBToken  = "xMnoCSdR_Z3JnzyXoYATsN_v0bsW0kUdFyix0cOcjgrhkKm-dFDCpzGmp8m20383fLRBlFWUfaDPyQbDpXPu4g=="
-	InfluxDBOrg    = "DAFRA"
-	InfluxDBBucket = "PLC_READ"
-	ReconnectDelay = 5 * time.Second
-	PlcPort        = "102"
-)
-
-// IsReachable checks if a network address is reachable.
-func IsReachable(ip string, port string) bool {
-	_, err := net.DialTimeout("tcp", ip+":"+port, 3*time.Second)
-	return err == nil
-}
-
-// IsInfluxDBAccessible checks if InfluxDB is accessible via HTTP.
-func IsInfluxDBAccessible(url string) bool {
-	resp, err := http.Get(url)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return false
-	}
-
-	message, ok := result["message"].(string)
-	return ok && message == "ready for queries and writes"
+	Tag1 byte  `json:"Tag1"`
+	Tag2 byte  `json:"Tag2"`
+	Tag3 byte  `json:"Tag3"`
+	Tag4 int32 `json:"Tag4"`
 }
 
 func main() {
+	// Load configuration
+	utils.LoadConfig("config.json")
+
 	// Check if InfluxDB is accessible
-	influxDbHealth := IsInfluxDBAccessible(InfluxDBHealth)
+	influxDbHealth := utils.IsInfluxDBAccessible(utils.ConfigData.InfluxDBHealth)
 	if !influxDbHealth {
-		log.Fatalf("InfluxDB at %s is not accessible or not ready", InfluxDBHealth)
+		log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
 	}
 	fmt.Println("InfluxDB is accessible and ready")
 
 	// Check if PLC is reachable
-	plcReachable := IsReachable(PlcIP, PlcPort)
+	plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 	if !plcReachable {
-		log.Fatalf("PLC at %s:%s is not reachable", PlcIP, PlcPort)
+		log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 	}
 	fmt.Println("PLC is reachable")
 
 	// Define the PLC connection parameters
-	handler := gos7.NewTCPClientHandler(PlcIP, 0, 1)
-	handler.Timeout = 5 * time.Second
-	handler.IdleTimeout = 5 * time.Second
+	handler := gos7.NewTCPClientHandler(utils.ConfigData.PlcIP, 0, 1)
+	handler.IdleTimeout = utils.GetReconnectDelay()
 
 	// Connect to the PLC
 	err := handler.Connect()
@@ -94,9 +55,9 @@ func main() {
 	client := gos7.NewClient(handler)
 
 	// Create a new InfluxDB client
-	influxClient := influxdb2.NewClient(InfluxDBURL, InfluxDBToken)
+	influxClient := influxdb2.NewClient(utils.ConfigData.InfluxDBURL, utils.ConfigData.InfluxDBToken)
 	defer influxClient.Close()
-	writeAPI := influxClient.WriteAPIBlocking(InfluxDBOrg, InfluxDBBucket)
+	writeAPI := influxClient.WriteAPIBlocking(utils.ConfigData.InfluxDBOrg, utils.ConfigData.InfluxDBBucket)
 
 	// Create a ticker to read data every second
 	ticker := time.NewTicker(1 * time.Second)
@@ -125,11 +86,7 @@ func main() {
 				}
 
 				// Map the byte slice to the struct
-				var plcData PLCData
-				plcData.Tag1 = data[0]
-				plcData.Tag2 = data[1]
-				plcData.Tag3 = data[2]
-				plcData.Tag4 = int32(binary.BigEndian.Uint32(data[3:7]))
+				plcData := utils.MapBytesToPLCData(data)
 
 				// Print the data
 				fmt.Printf("PLC Data - Tag1: %d, Tag2: %d, Tag3: %d, Tag4: %d\n", plcData.Tag1, plcData.Tag2, plcData.Tag3, plcData.Tag4)
