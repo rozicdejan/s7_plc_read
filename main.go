@@ -115,3 +115,5 @@ func main() {
 	// Stop the goroutine
 	done <- true
 }
+
+//compile with go build -o my-go-app.exr main.go
