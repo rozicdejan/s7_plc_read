@@ -15,6 +15,7 @@ type PLCData struct {
 	Tag4 int32
 }
 
+/*
 const (
 	PlcIP          = "192.168.33.100"
 	InfluxDBURL    = "http://192.168.107.100:8086"
@@ -25,6 +26,7 @@ const (
 	ReconnectDelay = 5 * time.Second
 	PlcPort        = "102"
 )
+*/
 
 // IsReachable checks if a network address is reachable.
 func IsReachable(ip string, port string) bool {
