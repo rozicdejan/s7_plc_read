@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -62,5 +63,29 @@ func MapBytesToPLCData(data []byte) PLCData {
 		Tag2: data[1],
 		Tag3: data[2],
 		Tag4: int32(binary.BigEndian.Uint32(data[3:7])),
+	}
+}
+
+// waitForPLC waits until the PLC becomes reachable.
+func WaitForPLC(ip, port string, delay time.Duration) {
+	for {
+		if IsReachable(ip, port) {
+			fmt.Println("PLC is reachable")
+			break
+		}
+		fmt.Println("Waiting for PLC to become reachable...")
+		time.Sleep(delay)
+	}
+}
+
+// waitForInfluxDB waits until InfluxDB becomes accessible.
+func WaitForInfluxDB(url string, delay time.Duration) {
+	for {
+		if IsInfluxDBAccessible(url) {
+			fmt.Println("InfluxDB is accessible and ready")
+			break
+		}
+		fmt.Println("Waiting for InfluxDB to become accessible...")
+		time.Sleep(delay)
 	}
 }

@@ -16,30 +16,6 @@ import (
 	"github.com/robinson/gos7"
 )
 
-// waitForPLC waits until the PLC becomes reachable.
-func waitForPLC(ip, port string, delay time.Duration) {
-	for {
-		if utils.IsReachable(ip, port) {
-			fmt.Println("PLC is reachable")
-			break
-		}
-		fmt.Println("Waiting for PLC to become reachable...")
-		time.Sleep(delay)
-	}
-}
-
-// waitForInfluxDB waits until InfluxDB becomes accessible.
-func waitForInfluxDB(url string, delay time.Duration) {
-	for {
-		if utils.IsInfluxDBAccessible(url) {
-			fmt.Println("InfluxDB is accessible and ready")
-			break
-		}
-		fmt.Println("Waiting for InfluxDB to become accessible...")
-		time.Sleep(delay)
-	}
-}
-
 func main() {
 
 	// Define a flag for enabling/disabling InfluxDB
@@ -50,7 +26,7 @@ func main() {
 
 	// If InfluxDB is enabled, wait for it to become accessible
 	if *useInfluxDB {
-		waitForInfluxDB(utils.ConfigData.InfluxDBHealth, 5*time.Second)
+		utils.WaitForInfluxDB(utils.ConfigData.InfluxDBHealth, 5*time.Second)
 		// Check if PLC is reachable
 		plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 
@@ -69,7 +45,7 @@ func main() {
 	}
 
 	// Wait for the PLC to become reachable
-	waitForPLC(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort, 5*time.Second)
+	utils.WaitForPLC(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort, 5*time.Second)
 
 	// Define the PLC connection parameters
 	handler := gos7.NewTCPClientHandler(utils.ConfigData.PlcIP, 0, 1)
