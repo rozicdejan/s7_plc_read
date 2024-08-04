@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 )
 
@@ -20,7 +21,14 @@ type Config struct {
 
 var ConfigData Config
 
+// Check if file exists
+func FileExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	return err == nil
+}
+
 func LoadConfig(filePath string) {
+
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)

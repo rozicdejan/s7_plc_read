@@ -23,12 +23,11 @@ type PLCData struct {
 }
 
 func main() {
-	// Load configuration
+
 	utils.LoadConfig("config.json")
 
 	// Check if InfluxDB is accessible
 	influxDbHealth := utils.IsInfluxDBAccessible(utils.ConfigData.InfluxDBHealth)
-	if !influxDbHealth {
 		log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
 	}
 	fmt.Println("InfluxDB is accessible and ready")
