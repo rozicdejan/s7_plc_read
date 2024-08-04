@@ -15,13 +15,6 @@ import (
 	"github.com/robinson/gos7"
 )
 
-type PLCData struct {
-	Tag1 byte  `json:"Tag1"`
-	Tag2 byte  `json:"Tag2"`
-	Tag3 byte  `json:"Tag3"`
-	Tag4 int32 `json:"Tag4"`
-}
-
 func main() {
 
 	utils.LoadConfig("config.json")
@@ -31,13 +24,13 @@ func main() {
 	if !influxDbHealth {
 		log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
 	}
-	fmt.Println("InfluxDB is accessible and ready")
+	fmt.Println("InfluxDB is accessible and ready @ " + utils.ConfigData.InfluxDBURL)
 	// Check if PLC is reachable
 	plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 	if !plcReachable {
 		log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 	}
-	fmt.Println("PLC is reachable")
+	fmt.Println("PLC is reachable @" + utils.ConfigData.PlcIP + ":" + "120")
 
 	// Define the PLC connection parameters
 	handler := gos7.NewTCPClientHandler(utils.ConfigData.PlcIP, 0, 1)
