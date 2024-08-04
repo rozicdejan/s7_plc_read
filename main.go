@@ -27,11 +27,11 @@ func main() {
 	utils.LoadConfig("config.json")
 
 	// Check if InfluxDB is accessible
-	influxDbHealth := utils.IsInfluxDBAccessible(utils.ConfigData.InfluxDBHealth)
-		log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
+	influxDbHealth := utils.IsInfluxDBAccessible(utils.InfluxDBHealth)
+	if !influxDbHealth {
+		log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.InfluxDBHealth)
 	}
 	fmt.Println("InfluxDB is accessible and ready")
-
 	// Check if PLC is reachable
 	plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 	if !plcReachable {
