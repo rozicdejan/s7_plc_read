@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -15,22 +16,60 @@ import (
 	"github.com/robinson/gos7"
 )
 
+// waitForPLC waits until the PLC becomes reachable.
+func waitForPLC(ip, port string, delay time.Duration) {
+	for {
+		if utils.IsReachable(ip, port) {
+			fmt.Println("PLC is reachable")
+			break
+		}
+		fmt.Println("Waiting for PLC to become reachable...")
+		time.Sleep(delay)
+	}
+}
+
+// waitForInfluxDB waits until InfluxDB becomes accessible.
+func waitForInfluxDB(url string, delay time.Duration) {
+	for {
+		if utils.IsInfluxDBAccessible(url) {
+			fmt.Println("InfluxDB is accessible and ready")
+			break
+		}
+		fmt.Println("Waiting for InfluxDB to become accessible...")
+		time.Sleep(delay)
+	}
+}
+
 func main() {
+
+	// Define a flag for enabling/disabling InfluxDB
+	useInfluxDB := flag.Bool("useInfluxDB", true, "Enable InfluxDB connection and writing")
+	flag.Parse()
 
 	utils.LoadConfig("config.json")
 
-	// Check if InfluxDB is accessible
-	influxDbHealth := utils.IsInfluxDBAccessible(utils.ConfigData.InfluxDBHealth)
-	if !influxDbHealth {
-		log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
+	// If InfluxDB is enabled, wait for it to become accessible
+	if *useInfluxDB {
+		waitForInfluxDB(utils.ConfigData.InfluxDBHealth, 5*time.Second)
+		// Check if PLC is reachable
+		plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
+
+		if !plcReachable {
+			log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
+		}
+		// Check if InfluxDB is accessible
+		influxDbHealth := utils.IsInfluxDBAccessible(utils.ConfigData.InfluxDBHealth)
+		if !influxDbHealth {
+			log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
+		}
+		fmt.Println("InfluxDB is accessible and ready @ " + utils.ConfigData.InfluxDBURL)
+
+		fmt.Println("PLC is reachable @" + utils.ConfigData.PlcIP + ":" + "120")
+
 	}
-	fmt.Println("InfluxDB is accessible and ready @ " + utils.ConfigData.InfluxDBURL)
-	// Check if PLC is reachable
-	plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
-	if !plcReachable {
-		log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
-	}
-	fmt.Println("PLC is reachable @" + utils.ConfigData.PlcIP + ":" + "120")
+
+	// Wait for the PLC to become reachable
+	waitForPLC(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort, 5*time.Second)
 
 	// Define the PLC connection parameters
 	handler := gos7.NewTCPClientHandler(utils.ConfigData.PlcIP, 0, 1)
@@ -83,16 +122,18 @@ func main() {
 				// Print the data
 				fmt.Printf("PLC Data - Tag1: %d, Tag2: %d, Tag3: %d, Tag4: %d\n", plcData.Tag1, plcData.Tag2, plcData.Tag3, plcData.Tag4)
 
-				// Create a new point and write it to InfluxDB
-				p := influxdb2.NewPointWithMeasurement("temperature").
-					AddTag("host", "plc").
-					AddField("temperature1", plcData.Tag1).
-					AddField("temperature2", plcData.Tag2).
-					AddField("temperature3", plcData.Tag3).
-					SetTime(time.Now())
+				// Write data to InfluxDB if enabled
+				if *useInfluxDB {
+					p := influxdb2.NewPointWithMeasurement("temperature").
+						AddTag("host", "plc").
+						AddField("temperature1", plcData.Tag1).
+						AddField("temperature2", plcData.Tag2).
+						AddField("temperature3", plcData.Tag3).
+						SetTime(time.Now())
 
-				if err := writeAPI.WritePoint(context.Background(), p); err != nil {
-					log.Printf("Failed to write data to InfluxDB: %v", err)
+					if err := writeAPI.WritePoint(context.Background(), p); err != nil {
+						log.Printf("Failed to write data to InfluxDB: %v", err)
+					}
 				}
 
 			case <-done:
@@ -109,4 +150,11 @@ func main() {
 	done <- true
 }
 
-//compile with go build -o my-go-app.exr main.go
+/*
+How to compile software in VsCode
+	compile with go build -o my-go-app.exr main.go
+
+To run the program without InfluxDB:
+	go run main.go -useInfluxDB=false
+
+*/
