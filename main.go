@@ -17,18 +17,24 @@ import (
 )
 
 func main() {
+	//load config
+	utils.LoadConfig("config.json")
 
 	// Define a flag for enabling/disabling InfluxDB
 	useInfluxDB := flag.Bool("useInfluxDB", true, "Enable InfluxDB connection and writing")
 	flag.Parse()
-
-	utils.LoadConfig("config.json")
 
 	// If InfluxDB is enabled, wait for it to become accessible
 	if *useInfluxDB {
 		utils.WaitForInfluxDB(utils.ConfigData.InfluxDBHealth, 5*time.Second)
 		// Check if PLC is reachable
 		plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
+
+		//run chrome
+		broseropen := utils.OpenBrowser(utils.ConfigData.InfluxDBURL)
+		if broseropen {
+			fmt.Println("InfluxDB is accessible and ready ")
+		}
 
 		if !plcReachable {
 			log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
