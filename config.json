@@ -1,11 +1,12 @@
 {
-    "PlcIP": "192.168.33.100",
-    "InfluxDBURL": "http://192.168.107.100:8086",
-    "InfluxDBHealth": "http://192.168.107.100:8086/health",
-    "InfluxDBToken": "xMnoCSdR_Z3JnzyXoYATsN_v0bsW0kUdFyix0cOcjgrhkKm-dFDCpzGmp8m20383fLRBlFWUfaDPyQbDpXPu4g==",
-    "InfluxDBOrg": "DAFRA",
-    "InfluxDBBucket": "PLC_READ",
-    "ReconnectDelay": 5,
-    "PlcPort": "102"
-  }
-  
+  "PlcIP": "192.168.33.100",
+  "InfluxDBURL": "http://192.168.107.100:8086",
+  "InfluxDBHealth": "http://192.168.107.100:8086/health",
+  "InfluxDBToken": "xMnoCSdR_Z3JnzyXoYATsN_v0bsW0kUdFyix0cOcjgrhkKm-dFDCpzGmp8m20383fLRBlFWUfaDPyQbDpXPu4g==",
+  "InfluxDBOrg": "DAFRA",
+  "InfluxDBBucket": "PLC_READ",
+  "ReconnectDelay": 5,
+  "PlcPort": "102",
+  "WriteToInfluxDB": true,    
+  "WebServer": true          
+}

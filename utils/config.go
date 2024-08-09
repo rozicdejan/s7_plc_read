@@ -9,14 +9,16 @@ import (
 )
 
 type Config struct {
-	PlcIP          string `json:"PlcIP"`
-	InfluxDBURL    string `json:"InfluxDBURL"`
-	InfluxDBHealth string `json:"InfluxDBHealth"`
-	InfluxDBToken  string `json:"InfluxDBToken"`
-	InfluxDBOrg    string `json:"InfluxDBOrg"`
-	InfluxDBBucket string `json:"InfluxDBBucket"`
-	ReconnectDelay int    `json:"ReconnectDelay"` // In seconds
-	PlcPort        string `json:"PlcPort"`
+	PlcIP           string `json:"PlcIP"`
+	InfluxDBURL     string `json:"InfluxDBURL"`
+	InfluxDBHealth  string `json:"InfluxDBHealth"`
+	InfluxDBToken   string `json:"InfluxDBToken"`
+	InfluxDBOrg     string `json:"InfluxDBOrg"`
+	InfluxDBBucket  string `json:"InfluxDBBucket"`
+	ReconnectDelay  int    `json:"ReconnectDelay"` // In seconds
+	PlcPort         string `json:"PlcPort"`
+	WriteToInfluxDB bool   `json:"WriteToInfluxDB"` // New field for enabling/disabling InfluxDB writing
+	WebServer       bool   `json:"WebServer"`       // New field for enabling/disabling the web server
 }
 
 var ConfigData Config

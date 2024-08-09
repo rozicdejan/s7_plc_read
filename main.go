@@ -25,20 +25,25 @@ func main() {
 	utils.LoadConfig("config.json")
 
 	// Define a flag for enabling/disabling InfluxDB
-	useInfluxDB := flag.Bool("useInfluxDB", true, "Enable InfluxDB connection and writing")
+	useInfluxDB := utils.ConfigData.WriteToInfluxDB
+	// Define a flag for enabling/disabling Webserver
+	useWebserver := utils.ConfigData.WebServer
+
 	flag.Parse()
 
-	// Set up web server
-	http.HandleFunc("/plcdata", plcDataHandler)
-	go func() {
-		log.Println("Starting web server on http://localhost:9999")
-		if err := http.ListenAndServe(":9999", nil); err != nil {
-			log.Fatalf("Web server failed: %v", err)
-		}
-	}()
+	if useWebserver {
+		// Set up web server
+		http.HandleFunc("/plcdata", plcDataHandler)
+		go func() {
+			log.Println("Starting web server on http://localhost:9999")
+			if err := http.ListenAndServe(":9999", nil); err != nil {
+				log.Fatalf("Web server failed: %v", err)
+			}
+		}()
+	}
 
 	// If InfluxDB is enabled, wait for it to become accessible
-	if *useInfluxDB {
+	if useInfluxDB {
 		utils.WaitForInfluxDB(utils.ConfigData.InfluxDBHealth, 5*time.Second)
 
 		// Check if PLC is reachable
@@ -115,10 +120,10 @@ func main() {
 				plcData = utils.MapBytesToPLCData(data)
 
 				// Print the data
-				fmt.Printf("PLC Data - Tag1: %d, Tag2: %d, Tag3: %d, Tag4: %d\n", plcData.Tag1, plcData.Tag2, plcData.Tag3, plcData.Tag4)
+				fmt.Printf("PLC Data - Tag1: %d, Tag2: %d, Tag3: %d, Tag4: %d, \n", plcData.Tag1, plcData.Tag2, plcData.Tag3, plcData.Tag4)
 
 				// Write data to InfluxDB if enabled
-				if *useInfluxDB {
+				if useInfluxDB {
 					p := influxdb2.NewPointWithMeasurement("temperature").
 						AddTag("host", "plc").
 						AddField("temperature1", plcData.Tag1).
