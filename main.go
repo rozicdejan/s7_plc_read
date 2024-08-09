@@ -139,6 +139,7 @@ func main() {
 					if err := writeAPI.WritePoint(context.Background(), p); err != nil {
 						log.Printf("Failed to write data to InfluxDB: %v", err)
 					}
+					fmt.Printf(" InfluxDB | OK | temperature1: %d, temperature2: %d, temperature3: %d, Mesurment name: temperature \n", plcData.Tag1, plcData.Tag2, plcData.Tag3)
 				}
 
 			case <-done:
