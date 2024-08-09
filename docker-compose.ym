@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  go-app:
+    build: .
+    ports:
+      - "9999:9999"
+    volumes:
+      - .:/app
+    environment:
+      - CONFIG_FILE=config.json
+    command: ["./my-go-app"]
