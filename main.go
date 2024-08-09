@@ -1,53 +1,34 @@
 package main
 
 import (
-	"context"
-	"flag"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"s7_plc_read/utils" // Replace with the actual module path
 
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/robinson/gos7"
 )
 
+var (
+	plcDataMutex sync.RWMutex
+	plcData      utils.PLCData
+)
+
 func main() {
-	//load config
+	// Load config
 	utils.LoadConfig("config.json")
 
-	// Define a flag for enabling/disabling InfluxDB
-	useInfluxDB := flag.Bool("useInfluxDB", true, "Enable InfluxDB connection and writing")
-	flag.Parse()
-
-	// If InfluxDB is enabled, wait for it to become accessible
-	if *useInfluxDB {
-		utils.WaitForInfluxDB(utils.ConfigData.InfluxDBHealth, 5*time.Second)
-		// Check if PLC is reachable
-		plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
-
-		//run chrome
-		broseropen := utils.OpenBrowser(utils.ConfigData.InfluxDBURL)
-		if broseropen {
-			fmt.Println("InfluxDB is accessible and ready ")
-		}
-
-		if !plcReachable {
-			log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
-		}
-		// Check if InfluxDB is accessible
-		influxDbHealth := utils.IsInfluxDBAccessible(utils.ConfigData.InfluxDBHealth)
-		if !influxDbHealth {
-			log.Fatalf("InfluxDB at %s is not accessible or not ready", utils.ConfigData.InfluxDBHealth)
-		}
-		fmt.Println("InfluxDB is accessible and ready @ " + utils.ConfigData.InfluxDBURL)
-
-		fmt.Println("PLC is reachable @" + utils.ConfigData.PlcIP + ":" + "120")
-
+	// Check if PLC is reachable
+	plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
+	if !plcReachable {
+		log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 	}
 
 	// Wait for the PLC to become reachable
@@ -66,11 +47,6 @@ func main() {
 
 	// Create a new PLC client
 	client := gos7.NewClient(handler)
-
-	// Create a new InfluxDB client
-	influxClient := influxdb2.NewClient(utils.ConfigData.InfluxDBURL, utils.ConfigData.InfluxDBToken)
-	defer influxClient.Close()
-	writeAPI := influxClient.WriteAPIBlocking(utils.ConfigData.InfluxDBOrg, utils.ConfigData.InfluxDBBucket)
 
 	// Create a ticker to read data every second
 	ticker := time.NewTicker(1 * time.Second)
@@ -99,28 +75,34 @@ func main() {
 				}
 
 				// Map the byte slice to the struct
-				plcData := utils.MapBytesToPLCData(data)
+				plcDataMutex.Lock()
+				plcData = utils.MapBytesToPLCData(data)
+				plcDataMutex.Unlock()
 
-				// Print the data
+				// Print the data for debugging purposes
 				fmt.Printf("PLC Data - Tag1: %d, Tag2: %d, Tag3: %d, Tag4: %d\n", plcData.Tag1, plcData.Tag2, plcData.Tag3, plcData.Tag4)
-
-				// Write data to InfluxDB if enabled
-				if *useInfluxDB {
-					p := influxdb2.NewPointWithMeasurement("temperature").
-						AddTag("host", "plc").
-						AddField("temperature1", plcData.Tag1).
-						AddField("temperature2", plcData.Tag2).
-						AddField("temperature3", plcData.Tag3).
-						SetTime(time.Now())
-
-					if err := writeAPI.WritePoint(context.Background(), p); err != nil {
-						log.Printf("Failed to write data to InfluxDB: %v", err)
-					}
-				}
 
 			case <-done:
 				return
 			}
+		}
+	}()
+
+	// Start the HTTP server
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		plcDataMutex.RLock()
+		defer plcDataMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(plcData); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	go func() {
+		log.Println("Starting server on :9999")
+		if err := http.ListenAndServe(":9999", nil); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
@@ -131,12 +113,3 @@ func main() {
 	// Stop the goroutine
 	done <- true
 }
-
-/*
-How to compile software in VsCode
-	compile with go build -o my-go-app.exr main.go
-
-To run the program without InfluxDB:
-	go run main.go -useInfluxDB=false
-
-*/
