@@ -52,12 +52,12 @@ func main() {
 		// Check if PLC is reachable
 		plcReachable := utils.IsReachable(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 
-		// Run chrome
-		browserOpen := utils.OpenBrowser(utils.ConfigData.InfluxDBURL)
-		if browserOpen {
-			fmt.Println("InfluxDB is accessible and ready ")
-		}
-
+		/*	// Run chrome
+			browserOpen := utils.OpenBrowser(utils.ConfigData.InfluxDBURL)
+			if browserOpen {
+				fmt.Println("InfluxDB is accessible and ready ")
+			}
+		*/
 		if !plcReachable {
 			log.Fatalf("PLC at %s:%s is not reachable", utils.ConfigData.PlcIP, utils.ConfigData.PlcPort)
 		}
