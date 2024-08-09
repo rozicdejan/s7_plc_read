@@ -15,10 +15,13 @@ import (
 	"s7_plc_read/utils" // Replace with the actual module path
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/robinson/gos7"
 )
 
 var plcData utils.PLCData
+var writeAPI api.WriteAPIBlocking
+var influxClient influxdb2.Client
 
 func main() {
 	// Load config
@@ -70,7 +73,7 @@ func main() {
 
 	// Wait for the PLC to become reachable
 	utils.WaitForPLC(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort, 5*time.Second)
-
+	fmt.Println("PLC is reachable @" + utils.ConfigData.PlcIP + ":" + "120")
 	// Define the PLC connection parameters
 	handler := gos7.NewTCPClientHandler(utils.ConfigData.PlcIP, 0, 1)
 	handler.IdleTimeout = utils.GetReconnectDelay()
@@ -85,10 +88,12 @@ func main() {
 	// Create a new PLC client
 	client := gos7.NewClient(handler)
 
-	// Create a new InfluxDB client
-	influxClient := influxdb2.NewClient(utils.ConfigData.InfluxDBURL, utils.ConfigData.InfluxDBToken)
-	defer influxClient.Close()
-	writeAPI := influxClient.WriteAPIBlocking(utils.ConfigData.InfluxDBOrg, utils.ConfigData.InfluxDBBucket)
+	// Create a new InfluxDB client if useInfluxDB flag is true
+	if useInfluxDB {
+		influxClient = influxdb2.NewClient(utils.ConfigData.InfluxDBURL, utils.ConfigData.InfluxDBToken)
+		defer influxClient.Close()
+		writeAPI = influxClient.WriteAPIBlocking(utils.ConfigData.InfluxDBOrg, utils.ConfigData.InfluxDBBucket)
+	}
 
 	// Create a ticker to read data every second
 	ticker := time.NewTicker(1 * time.Second)
