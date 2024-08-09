@@ -6,7 +6,8 @@ services:
     ports:
       - "9999:9999"
     volumes:
-      - .:/app
+      - ./config.json:/app/config.json
     environment:
-      - CONFIG_FILE=config.json
+      - CONFIG_FILE=/app/config.json
     command: ["./my-go-app"]
+    restart: always
