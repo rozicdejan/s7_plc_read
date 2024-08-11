@@ -118,6 +118,17 @@ func main() {
 				err := client.AGReadDB(dbNumber, startAddress, numBytes, data)
 				if err != nil {
 					log.Printf("Failed to read data from PLC: %v", err)
+					// Wait for the PLC to become reachable
+					utils.WaitForPLC(utils.ConfigData.PlcIP, utils.ConfigData.PlcPort, 5*time.Second)
+					// Connect to the PLC
+					err := handler.Connect()
+					if err != nil {
+						log.Fatalf("Failed to connect to PLC: %v", err)
+					}
+					defer handler.Close()
+
+					// Create a new PLC client
+					client = gos7.NewClient(handler)
 					continue
 				}
 
